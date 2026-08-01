@@ -23,16 +23,17 @@ class StudyOptimizer:
                 topic.stability
             )
             #2. Вычисляет приоритет: Priority = Risk / Cost.
-            priority = risk / topic.cost_ minutes
-            if topic.cost_minutes > 0
-            else 0
+            if topic.cost_minutes > 0:
+                priority = risk / topic.cost_minutes
+            else:
+                priority = 0.0
             scored_topics.append({
                 'topic': topic,
                 'risk': risk,
                 'priority': priority
             })
         #3. Заполняет доступное время наиболее критичными темами.
-        scored_ topics.sort(key=lambda x: x['priority'], reverse=True)
+        scored_topics.sort(key=lambda x: x['priority'], reverse=True)
         selected_topics = []
         deferred_topics = []
         total_time = 0

@@ -14,7 +14,10 @@ st.caption("Персональный оптимизатор учебной на�
 
 #2. Инициализация хранилища
 if "topics" not in st.session_state:
-    st.session_state.topics = load_topics()
+    st.session_state.topics = [
+        {"name": "Матанализ: Пределы", "days": 5.0, "stability": 2.0, "cost": 30},
+        {"name": "Физика: Законы Ньютона", "days": 7.0, "stability": 1.5, "cost": 40},
+    ]
 
 #3. Настройка лимита времени на день
 st.sidebar.header("⚙️ Настройки нагрузки")
@@ -49,7 +52,6 @@ with st.form("add_topic_form", clear_on_submit=True):
                 "stability": stability,
                 "cost": cost
             })
-            save_topics(st.session_state.topics)
             st.success(f"Тема «{name}» успешно добавлена и сохранена.")
         else:
             st.warning("Введите название темы.")
@@ -71,7 +73,6 @@ if st.session_state.topics:
 
     if st.button("🗑 Очистить все темы"):
         st.session_state.topics = []
-        save_topics([]) #Очищаем и файл
         st.rerun()
 
     #6. Расчет оптимизации
