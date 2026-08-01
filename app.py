@@ -2,6 +2,27 @@ import streamlit as st
 import pandas as pd
 from decay_model import MemoryDecayModel
 from optimizer import StudyOptimizer, Topic
+
+import json
+import os
+
+DATA_FILE = "topics.json"
+
+def load_topics():
+    if os.path.exists(DATA_FILE):
+        try:
+            with open(DATA_FILE, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except Exception:
+            pass
+    return [
+        {"name": "Матанализ: Пределы", "days": 5.0, "stability": 2.0, "cost": 30},
+        {"name": "Физика: Законы Ньютона", "days": 7.0, "stability": 1.5, "cost": 40},
+    ]
+
+def save_topics(topics):
+    with open(DATA_FILE, "w", encoding="utf-8") as f:
+        json.dump(topics, f, ensure_ascii=False, indent=2)
     
 #1. Настройка страницы
 st.set_page_config(
@@ -12,12 +33,16 @@ st.set_page_config(
 st.title("📚 Интервал")
 st.caption("Персональный оптимизатор учебной нагрузки на основе модели Эббингауза")
 
+with st.expander("💡 Как это работает? (Инструкция)", expanded=False):
+    st.markdown("""
+    1. **Добавьте темы**: укажите прочность памяти $S$, сколько дней прошло и время повторения.
+    2. **Задайте лимит времени** в меню слева.
+    3. **Нажмите «Сформировать план»**: алгоритм отберет самые горящие темы на сегодня!
+    """)
+
 #2. Инициализация хранилища
 if "topics" not in st.session_state:
-    st.session_state.topics = [
-        {"name": "Матанализ: Пределы", "days": 5.0, "stability": 2.0, "cost": 30},
-        {"name": "Физика: Законы Ньютона", "days": 7.0, "stability": 1.5, "cost": 40},
-    ]
+    st.session_state.topics = load_topics()
 
 #3. Настройка лимита времени на день
 st.sidebar.header("⚙️ Настройки нагрузки")
@@ -52,6 +77,7 @@ with st.form("add_topic_form", clear_on_submit=True):
                 "stability": stability,
                 "cost": cost
             })
+            save_topics(st.session_state.topics)    
             st.success(f"Тема «{name}» успешно добавлена и сохранена.")
         else:
             st.warning("Введите название темы.")
@@ -73,6 +99,7 @@ if st.session_state.topics:
 
     if st.button("🗑 Очистить все темы"):
         st.session_state.topics = []
+        save_topics([])
         st.rerun()
 
     #6. Расчет оптимизации
