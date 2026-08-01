@@ -35,11 +35,12 @@ st.caption("Персональный оптимизатор учебной на�
 
 with st.expander("💡 Как это работает? (Инструкция)", expanded=False):
     st.markdown("""
-    1. **Добавьте темы**: укажите прочность памяти $S$, сколько дней прошло и время повторения.
-    2. **Задайте лимит времени** в меню слева.
-    3. **Нажмите «Сформировать план»**: алгоритм отберет самые горящие темы на сегодня!
+    ### 👋 Добро пожаловать в «Интервал»!
+    **Как пользоваться:**
+    1. **Добавьте темы** в список ниже, указав сколько дней не повторяли и время на повторение.
+    2. **Задайте лимит времени** через боковую панель настроек (кнопка ☰ слева вверху).
+    3. **Нажмите «Сформировать план»**: алгоритм рассчитает риск забывания каждой темы и подберёт идеальный список на сегодня.
     """)
-
 #2. Инициализация хранилища
 if "topics" not in st.session_state:
     st.session_state.topics = load_topics()
@@ -127,18 +128,24 @@ if st.session_state.topics:
         res_col1, res_col2 = st.columns(2)
 
         with res_col1:
-            st.write("✅ Повторить сегодня:")
+            st.markdown("### ✅ Включено в план")
             if result['scheduled_today']:
                 for item in result['scheduled_today']:
-                    st.success(f"**{item['name']}** ({item['cost_minutes']} мин)\nРиск забывания: `{item['forgetting_risk']}`")
+                    with st.container(border=True):
+                        st.markdown(f"**📌 {item['name']}**")
+                        st.caption(f"⏱ Время: {item['cost_minutes']} мин.")
+                        st.error(f"📉 Риск забывания: {item['forgetting_risk']}")
             else:
                 st.info("Сегодня повторений не требуется!")
 
         with res_col2:
-            st.write("⏳ Отложено на потом:")
+            st.markdown("### ⏳ Отложено на потом")
             if result['deferred_topics']:
                 for item in result['deferred_topics']:
-                    st.warning(f"**{item['name']}**\nРиск забывания: `{item['forgetting_risk']}`")
+                    with st.container(border=True):
+                        st.markdown(f"**📌 {item['name']}**")
+                        st.caption("Не уместилось в дневной лимит")
+                        st.warning(f"📉 Риск забывания: {item['forgetting_risk']}")
             else:
                 st.success("Все темы уместились в план!")
 else:
