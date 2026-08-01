@@ -188,7 +188,7 @@ if st.session_state.topics:
                             st.error(f"📉 Риск забывания: {item['forgetting_risk']}")
                             
                             # Кнопка «Повторено!»
-                           if st.button(f"✅ Повторено!", key=f"btn_{item['name']}", use_container_width=True):
+                            if st.button(f"✅ Повторено!", key=f"btn_{item['name']}", use_container_width=True):
                                 for t in st.session_state.topics:
                                     if t["name"] == item["name"]:
                                         t["days"] = 0.0
