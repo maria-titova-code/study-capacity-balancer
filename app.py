@@ -1,10 +1,11 @@
 import streamlit as st
 import pandas as pd
-from decay_model import MemoryDecayModel
-from optimizer import StudyOptimizer, Topic
-
 import json
 import os
+
+from decay_model import MemoryDecayModel
+from optimizer import StudyOptimizer, Topic
+from charts import render_forgetting_curves
 
 DATA_FILE = "topics.json"
 
@@ -33,6 +34,11 @@ st.set_page_config(
 st.title("📚 Интервал")
 st.caption("Персональный оптимизатор учебной нагрузки на основе модели Эббингауза")
 
+#2. Инициализация хранилища
+if "topics" not in st.session_state:
+    st.session_state.topics = load_topics()
+
+#2.1. Инструкция/Обучалка
 with st.expander("💡 Как это работает? (Инструкция)", expanded=False):
     st.markdown("""
     ### 👋 Добро пожаловать в «Интервал»!
@@ -41,19 +47,38 @@ with st.expander("💡 Как это работает? (Инструкция)", 
     2. **Задайте лимит времени** через боковую панель настроек (кнопка ☰ слева вверху).
     3. **Нажмите «Сформировать план»**: алгоритм рассчитает риск забывания каждой темы и подберёт идеальный список на сегодня.
     """)
-#2. Инициализация хранилища
-if "topics" not in st.session_state:
-    st.session_state.topics = load_topics()
 
-#3. Настройка лимита времени на день
-st.sidebar.header("⚙️ Настройки нагрузки")
+#3. Боковое меню
+st.sidebar.header("⚙️ Настройки дня")
 max_daily_minutes = st.sidebar.slider(
-    "Дневной лимит времени (минуты):",
-    min_value = 15,
-    max_value = 180,
-    value = 60,
-    step = 15
+    "⏱️ Лимит времени (минуты):",
+    min_value=15,
+    max_value=180,
+    value=60,
+    step=15,
+    help="Сколько минут вы готовы потратить на повторения сегодня?"
 )
+
+st.sidebar.header("⚙️ Настройки алгоритма")
+
+mode_choice = st.sidebar.selectbox(
+    "Режим оптимизации:",
+    ["Стандартный", "Сессия"],
+    help="В режиме «Сессия» алгоритм отдаёт приоритет самым горящим темам независимо от времени."
+)
+mode = "cramming" if mode_choice == "Сессия" else "standard"
+
+stability_multiplier = st.sidebar.slider(
+    "Коэффициент роста прочности (k(S)):",
+    min_value=1.1,
+    max_value=2.5,
+    value=1.5,
+    step=0.1,
+    help="Во сколько раз увеличивается прочность (S) после повторения темы."
+)
+
+st.sidebar.markdown("---")
+st.sidebar.info("💡 **Совет:** Поддерживайте регулярность. Лучше заниматься каждый день по 45 минут, чем раз в неделю 5 часов.")
 
 #4. Форма для добавления тем
 st.write("---")
@@ -114,39 +139,70 @@ if st.session_state.topics:
             for t in st.session_state.topics
         ]
 
-        result = optimizer.optimize_daily_schedule(topic_objects, max_daily_minutes)
-
-        st.subheader("🎯 Результаты оптимизации")
-        
-        percent_used = min(result['total_time_used'] / max_daily_minutes, 1.0)
-        st.metric(
-            label="Занято времени", 
-            value=f"{result['total_time_used']} минут из {max_daily_minutes} минут"
+        result = optimizer.optimize_daily_schedule(
+            topic_objects, 
+            max_daily_minutes, 
+            mode=mode
         )
-        st.progress(percent_used)
 
-        res_col1, res_col2 = st.columns(2)
+        st.session_state.last_result = result
 
-        with res_col1:
-            st.markdown("### ✅ Включено в план")
-            if result['scheduled_today']:
-                for item in result['scheduled_today']:
-                    with st.container(border=True):
-                        st.markdown(f"**📌 {item['name']}**")
-                        st.caption(f"⏱ Время: {item['cost_minutes']} мин.")
-                        st.error(f"📉 Риск забывания: {item['forgetting_risk']}")
-            else:
-                st.info("Сегодня повторений не требуется!")
+    # Вывод результатов во вкладках (План + Графики)
+    if "last_result" in st.session_state and st.session_state.last_result:
+        tab1, tab2 = st.tabs(["🎯 План на сегодня", "📈 Кривые забывания"])
 
-        with res_col2:
-            st.markdown("### ⏳ Отложено на потом")
-            if result['deferred_topics']:
-                for item in result['deferred_topics']:
-                    with st.container(border=True):
-                        st.markdown(f"**📌 {item['name']}**")
-                        st.caption("Не уместилось в дневной лимит")
-                        st.warning(f"📉 Риск забывания: {item['forgetting_risk']}")
-            else:
-                st.success("Все темы уместились в план!")
+        result = st.session_state.last_result
+
+        with tab1:
+            st.subheader("🎯 Оптимальный план")
+            percent_used = min(result['total_time_used'] / max_daily_minutes, 1.0)
+            
+            m1, m2 = st.columns(2)
+            with m1:
+                st.metric("Запланировано времени", f"{result['total_time_used']} из {max_daily_minutes} мин")
+            with m2:
+                st.metric("Загрузка лимита", f"{int(percent_used * 100)}%")
+                
+            st.progress(percent_used)
+            st.write("")
+
+            res_col1, res_col2 = st.columns(2)
+
+            with res_col1:
+                st.markdown("### ✅ Включено в план")
+                if result['scheduled_today']:
+                    for item in result['scheduled_today']:
+                        with st.container(border=True):
+                            st.markdown(f"**📌 {item['name']}**")
+                            st.caption(f"⏱ Время: {item['cost_minutes']} мин. | S = {item['stability']} дн.")
+                            st.error(f"📉 Риск забывания: {item['forgetting_risk']}")
+                            
+                            # Кнопка «Повторено!»
+                            if st.button(f"✅ Повторено!", key=f"btn_{item['name']}"):
+                                for t in st.session_state.topics:
+                                    if t["name"] == item["name"]:
+                                        t["days"] = 0.0
+                                        t["stability"] = round(t["stability"] * stability_multiplier, 2)
+                                save_topics(st.session_state.topics)
+                                st.toast(f"Тема «{item['name']}» повторена! Прочность (S) увеличена.")
+                                st.session_state.last_result = None
+                                st.rerun()
+                else:
+                    st.info("Сегодня повторений не требуется!")
+
+            with res_col2:
+                st.markdown("### ⏳ Отложено на потом")
+                if result['deferred_topics']:
+                    for item in result['deferred_topics']:
+                        with st.container(border=True):
+                            st.markdown(f"**📌 {item['name']}**")
+                            st.caption(f"⏱ Время: {item['cost_minutes']} мин.")
+                            st.warning(f"📉 Риск забывания: {item['forgetting_risk']}")
+                else:
+                    st.success("Все темы уместились в план!")
+
+        with tab2:
+            render_forgetting_curves(st.session_state.topics)
+
 else:
-    st.info("Список тем пуст. Добавьте темы через форму выше!")
+    st.info("Список тем пуст. Добавьте первую тему выше!")
