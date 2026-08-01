@@ -29,10 +29,20 @@ def save_topics(topics):
 st.set_page_config(
     page_title="Интервал",
     page_icon="📚",
-    layout="centered"
+    layout="wide"
 )
+st.markdown("""
+    <style>
+        .block-container {
+            padding-top: 1.2rem !important;
+            padding-bottom: 2rem !important;
+            padding-left: 0.8rem !important;
+            padding-right: 0.8rem !important;
+        }
+    </style>
+""", unsafe_allow_html=True)
 st.title("📚 Интервал")
-st.caption("Персональный оптимизатор учебной нагрузки на основе модели Эббингауза")
+st.caption("Персональный оптимизатор учебной нагрузки на основе модели Эббингауза | ⚙️ Настройки дня — в меню ☰ слева вверху")
 
 #2. Инициализация хранилища
 if "topics" not in st.session_state:
@@ -121,9 +131,9 @@ if st.session_state.topics:
             "Время (минуты)": t["cost"]
         } for t in st.session_state.topics
     ])
-    st.dataframe(topics_df, use_container_width=True)
+    st.dataframe(topics_df, use_container_width=True, hide_index=True)
 
-    if st.button("🗑 Очистить все темы"):
+    if st.button("🗑 Очистить все темы", use_container_width=True):
         st.session_state.topics = []
         save_topics([])
         st.rerun()
@@ -178,7 +188,7 @@ if st.session_state.topics:
                             st.error(f"📉 Риск забывания: {item['forgetting_risk']}")
                             
                             # Кнопка «Повторено!»
-                            if st.button(f"✅ Повторено!", key=f"btn_{item['name']}"):
+                           if st.button(f"✅ Повторено!", key=f"btn_{item['name']}", use_container_width=True):
                                 for t in st.session_state.topics:
                                     if t["name"] == item["name"]:
                                         t["days"] = 0.0
