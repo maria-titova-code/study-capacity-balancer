@@ -29,7 +29,7 @@ def save_topics(topics):
 st.set_page_config(
     page_title="Интервал",
     page_icon="📚",
-    layout="wide"
+    layout="centered"
 )
 st.markdown("""
     <style>
